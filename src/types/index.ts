@@ -146,6 +146,26 @@ export interface Location {
 }
 
 // ==============================
+// Agent Event Types (Phase 1 SSE streaming)
+// ==============================
+
+export type AgentEventType =
+  | 'thinking'
+  | 'tool_start'
+  | 'tool_result'
+  | 'stage_change'
+  | 'plan_outline'
+  | 'cost_summary'
+  | 'clarification_needed'
+  | 'clarification_answer';
+
+export interface AgentEvent {
+  type: AgentEventType;
+  timestamp: string;
+  data: Record<string, unknown>;
+}
+
+// ==============================
 // Tool Trace Types
 // ==============================
 
@@ -170,6 +190,7 @@ export interface ChatMessage {
   taskId?: string;
   itinerary?: StructuredItinerary;
   toolTrace?: ToolTrace[];
+  agentEvents?: AgentEvent[];
   status?: TaskStatus;
   progress?: number;
   progressMessage?: string;

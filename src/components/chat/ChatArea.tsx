@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { submitPlanning, addUserMessage } from '@/store/chatSlice';
 import { fetchProjects } from '@/store/projectsSlice';
@@ -12,6 +13,8 @@ interface ChatAreaProps {
 
 export function ChatArea({ onViewItinerary }: ChatAreaProps) {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
   const { messages, currentTaskId, currentProjectId, loading } = useAppSelector((s) => s.chat);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -30,9 +33,18 @@ export function ChatArea({ onViewItinerary }: ChatAreaProps) {
     dispatch(submitPlanning({
       requirements: text,
       ...(currentProjectId ? { projectId: currentProjectId } : {}),
-    })).then(() => {
+    })).then((result) => {
       // Refresh projects list (a new project may have been auto-created)
       dispatch(fetchProjects());
+
+      // If a new project was created (we were on /chat without a projectId),
+      // navigate to /chat/:projectId so the URL reflects the new project
+      if (result.meta.requestStatus === 'fulfilled') {
+        const payload = result.payload as { projectId: string };
+        if (payload.projectId && payload.projectId !== urlProjectId) {
+          navigate(`/chat/${payload.projectId}`, { replace: true });
+        }
+      }
     });
   };
 

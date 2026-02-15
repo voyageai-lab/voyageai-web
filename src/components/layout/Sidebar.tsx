@@ -1,14 +1,15 @@
 import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProjects, deleteProject, setActiveProject } from '@/store/projectsSlice';
-import { resetChat, clearChatForProject, loadConversationHistory, setCurrentProjectId } from '@/store/chatSlice';
+import { resetChat } from '@/store/chatSlice';
 import { logout } from '@/store/authSlice';
 
 export function Sidebar() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
-  const { projects, activeProjectId, loading } = useAppSelector((s) => s.projects);
+  const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
+  const { projects, loading } = useAppSelector((s) => s.projects);
   const { user } = useAppSelector((s) => s.auth);
 
   useEffect(() => {
@@ -18,23 +19,23 @@ export function Sidebar() {
   const handleNewChat = () => {
     dispatch(setActiveProject(null));
     dispatch(resetChat());
+    navigate('/chat');
   };
 
   const handleSelectProject = (projectId: string) => {
-    if (projectId === activeProjectId) return; // Already selected
-    // 1. Clear old chat state first
-    dispatch(clearChatForProject());
-    // 2. Set active project in both slices
-    dispatch(setActiveProject(projectId));
-    dispatch(setCurrentProjectId(projectId));
-    // 3. Load conversation history for the selected project
-    dispatch(loadConversationHistory(projectId));
+    if (projectId === urlProjectId) return; // Already on this project's URL
+    navigate(`/chat/${projectId}`);
   };
 
   const handleDeleteProject = (e: React.MouseEvent, projectId: string) => {
     e.stopPropagation();
     if (confirm('Delete this conversation?')) {
-      dispatch(deleteProject(projectId));
+      dispatch(deleteProject(projectId)).then(() => {
+        // If we deleted the currently active project, navigate to /chat
+        if (projectId === urlProjectId) {
+          navigate('/chat');
+        }
+      });
     }
   };
 
@@ -68,7 +69,7 @@ export function Sidebar() {
             key={project.projectId}
             onClick={() => handleSelectProject(project.projectId)}
             className={`w-full group flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm text-left transition ${
-              activeProjectId === project.projectId
+              urlProjectId === project.projectId
                 ? 'bg-gray-700 text-white'
                 : 'text-gray-300 hover:bg-gray-800'
             }`}

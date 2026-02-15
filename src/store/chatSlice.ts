@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import { apiClient } from '@/api/client';
 import type {
+  AgentEvent,
   ChatMessage,
   PlanningRequest,
   PlanningSubmitResponse,
@@ -9,6 +10,7 @@ import type {
   ToolTrace,
   ConversationHistoryResponse,
 } from '@/types';
+import { normalizeItinerary } from '@/utils/normalizeItinerary';
 
 interface ChatState {
   messages: ChatMessage[];
@@ -129,6 +131,16 @@ const chatSlice = createSlice({
         lastMsg.content = `Sorry, something went wrong: ${action.payload}`;
       }
     },
+    addAgentEvent(state, action: PayloadAction<AgentEvent>) {
+      // Append the event to the current assistant message's agentEvents array
+      const lastMsg = state.messages[state.messages.length - 1];
+      if (lastMsg && lastMsg.role === 'assistant' && lastMsg.status !== 'COMPLETED') {
+        if (!lastMsg.agentEvents) {
+          lastMsg.agentEvents = [];
+        }
+        lastMsg.agentEvents.push(action.payload);
+      }
+    },
     setSseConnected(state, action: PayloadAction<boolean>) {
       state.sseConnected = action.payload;
     },
@@ -228,7 +240,9 @@ const chatSlice = createSlice({
 
 function tryParseItinerary(json: string): StructuredItinerary | undefined {
   try {
-    return JSON.parse(json);
+    const raw = JSON.parse(json);
+    // Normalize snake_case (Python) → camelCase (TypeScript) field names
+    return normalizeItinerary(raw);
   } catch {
     return undefined;
   }
@@ -239,6 +253,7 @@ export const {
   setProgress,
   setCompleted,
   setFailed,
+  addAgentEvent,
   setSseConnected,
   resetChat,
   setCurrentProjectId,

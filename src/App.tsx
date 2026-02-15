@@ -33,14 +33,30 @@ function AppRoutes() {
       <Route path="/login" element={<LoginForm />} />
       <Route path="/register" element={<RegisterForm />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+      {/* Protected routes with URL-based project/chat navigation */}
       <Route
-        path="/*"
+        path="/chat/:projectId"
         element={
           <AuthGuard>
             <AppLayout />
           </AuthGuard>
         }
       />
+      <Route
+        path="/chat"
+        element={
+          <AuthGuard>
+            <AppLayout />
+          </AuthGuard>
+        }
+      />
+
+      {/* Default redirect: / → /chat */}
+      <Route path="/" element={<Navigate to="/chat" replace />} />
+
+      {/* Catch-all redirect */}
+      <Route path="*" element={<Navigate to="/chat" replace />} />
     </Routes>
   );
 }

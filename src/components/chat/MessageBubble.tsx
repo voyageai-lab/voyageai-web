@@ -1,4 +1,6 @@
 import type { ChatMessage } from '@/types';
+import { AgentActivityFeed } from './AgentActivityFeed';
+import { ClarificationQuestions } from './ClarificationQuestions';
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -8,6 +10,13 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, onViewItinerary }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isProcessing = message.status === 'PROCESSING' || message.status === 'PENDING';
+  const hasAgentEvents = !isUser && message.agentEvents && message.agentEvents.length > 0;
+
+  // Check if the latest event is a clarification request (Phase 2)
+  const clarificationEvent = hasAgentEvents
+    ? [...message.agentEvents!].reverse().find((e: { type: string }) => e.type === 'clarification_needed')
+    : undefined;
+  const hasClarification = !!clarificationEvent;
 
   return (
     <div className={`flex gap-3 ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -67,6 +76,25 @@ export function MessageBubble({ message, onViewItinerary }: MessageBubbleProps) 
             </div>
           )}
         </div>
+
+        {/* Live agent activity feed — visible during processing */}
+        {hasAgentEvents && (
+          <AgentActivityFeed events={message.agentEvents!} />
+        )}
+
+        {/* Inline clarification questions (Phase 2) */}
+        {hasClarification && message.taskId && (
+          <ClarificationQuestions
+            questions={(clarificationEvent!.data.questions as Array<{
+              id: string;
+              question: string;
+              type: 'single_choice' | 'multiple_choice' | 'free_text';
+              options?: string[];
+            }>) || []}
+            taskId={message.taskId}
+          />
+        )}
+
         <p className={`text-xs mt-1 ${isUser ? 'text-right' : 'text-left'} text-gray-400`}>
           {new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
         </p>
