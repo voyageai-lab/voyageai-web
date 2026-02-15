@@ -13,6 +13,7 @@ import type {
 interface ChatState {
   messages: ChatMessage[];
   currentTaskId: string | null;
+  currentProjectId: string | null;
   status: TaskStatus | null;
   progress: number;
   progressMessage: string;
@@ -26,6 +27,7 @@ interface ChatState {
 const initialState: ChatState = {
   messages: [],
   currentTaskId: null,
+  currentProjectId: null,
   status: null,
   progress: 0,
   progressMessage: '',
@@ -133,10 +135,14 @@ const chatSlice = createSlice({
     resetChat(state) {
       Object.assign(state, initialState);
     },
+    setCurrentProjectId(state, action: PayloadAction<string | null>) {
+      state.currentProjectId = action.payload;
+    },
     clearChatForProject(state) {
       // Keep initial state but clear messages/itinerary for switching projects
       state.messages = [];
       state.currentTaskId = null;
+      state.currentProjectId = null;
       state.status = null;
       state.progress = 0;
       state.progressMessage = '';
@@ -158,6 +164,7 @@ const chatSlice = createSlice({
       })
       .addCase(submitPlanning.fulfilled, (state, action) => {
         state.currentTaskId = action.payload.taskId;
+        state.currentProjectId = action.payload.projectId;
         state.status = 'PROCESSING';
         // Add an assistant "typing" message
         state.messages.push({
@@ -211,6 +218,7 @@ export const {
   setFailed,
   setSseConnected,
   resetChat,
+  setCurrentProjectId,
   clearChatForProject,
 } = chatSlice.actions;
 export default chatSlice.reducer;

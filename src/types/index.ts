@@ -50,10 +50,12 @@ export interface UpdateProjectRequest {
 
 export interface PlanningRequest {
   requirements: string;
+  projectId?: string;
 }
 
 export interface PlanningSubmitResponse {
   taskId: string;
+  projectId: string;
   message: string;
   statusUrl: string;
 }

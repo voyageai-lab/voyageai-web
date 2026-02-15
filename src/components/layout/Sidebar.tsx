@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProjects, deleteProject, setActiveProject } from '@/store/projectsSlice';
-import { resetChat } from '@/store/chatSlice';
+import { resetChat, loadConversationHistory, setCurrentProjectId } from '@/store/chatSlice';
 import { logout } from '@/store/authSlice';
 
 export function Sidebar() {
@@ -22,6 +22,8 @@ export function Sidebar() {
 
   const handleSelectProject = (projectId: string) => {
     dispatch(setActiveProject(projectId));
+    dispatch(setCurrentProjectId(projectId));
+    dispatch(loadConversationHistory(projectId));
   };
 
   const handleDeleteProject = (e: React.MouseEvent, projectId: string) => {

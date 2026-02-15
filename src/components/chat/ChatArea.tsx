@@ -12,7 +12,7 @@ interface ChatAreaProps {
 
 export function ChatArea({ onViewItinerary }: ChatAreaProps) {
   const dispatch = useAppDispatch();
-  const { messages, currentTaskId, loading } = useAppSelector((s) => s.chat);
+  const { messages, currentTaskId, currentProjectId, loading } = useAppSelector((s) => s.chat);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // SSE connection for real-time updates
@@ -26,9 +26,12 @@ export function ChatArea({ onViewItinerary }: ChatAreaProps) {
   const handleSend = (text: string) => {
     // Add user message to chat
     dispatch(addUserMessage(text));
-    // Submit to backend
-    dispatch(submitPlanning({ requirements: text })).then(() => {
-      // Refresh projects list (a new project was auto-created)
+    // Submit to backend - pass projectId if we're in an existing project
+    dispatch(submitPlanning({
+      requirements: text,
+      ...(currentProjectId ? { projectId: currentProjectId } : {}),
+    })).then(() => {
+      // Refresh projects list (a new project may have been auto-created)
       dispatch(fetchProjects());
     });
   };
