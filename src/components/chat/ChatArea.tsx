@@ -41,7 +41,7 @@ export function ChatArea({ onViewItinerary }: ChatAreaProps) {
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <EmptyState />
+          <EmptyState onSuggestionClick={handleSend} />
         ) : (
           <div className="max-w-3xl mx-auto py-6 px-4 space-y-6">
             {messages.map((msg) => (
@@ -62,7 +62,7 @@ export function ChatArea({ onViewItinerary }: ChatAreaProps) {
   );
 }
 
-function EmptyState() {
+function EmptyState({ onSuggestionClick }: { onSuggestionClick: (text: string) => void }) {
   return (
     <div className="flex-1 flex items-center justify-center h-full">
       <div className="text-center max-w-md px-4">
@@ -81,12 +81,13 @@ function EmptyState() {
             'Weekend getaway to Paris: focus on food and art',
             '7 days in Iceland: Northern Lights, glaciers, and hot springs',
           ].map((suggestion) => (
-            <div
+            <button
               key={suggestion}
-              className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-blue-300 hover:bg-blue-50/50 transition cursor-default"
+              onClick={() => onSuggestionClick(suggestion)}
+              className="px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-blue-300 hover:bg-blue-50/50 transition cursor-pointer text-left"
             >
               {suggestion}
-            </div>
+            </button>
           ))}
         </div>
       </div>

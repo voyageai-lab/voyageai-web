@@ -190,15 +190,38 @@ const chatSlice = createSlice({
           status: 'FAILED',
         });
       })
+      .addCase(loadConversationHistory.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
       .addCase(loadConversationHistory.fulfilled, (state, action) => {
+        state.loading = false;
+        // Clear any in-flight task state
+        state.currentTaskId = null;
+        state.status = null;
+        state.progress = 0;
+        state.progressMessage = '';
+        state.toolTrace = [];
+        state.error = null;
+
         // Convert backend ConversationMessages to ChatMessages
-        state.messages = action.payload.messages.map((msg) => ({
+        const chatMessages: ChatMessage[] = action.payload.messages.map((msg) => ({
           id: msg.messageId,
           role: msg.role === 'USER' ? 'user' : msg.role === 'ASSISTANT' ? 'assistant' : 'system',
           content: msg.content,
           timestamp: msg.timestamp,
           itinerary: msg.structuredData ? tryParseItinerary(msg.structuredData) : undefined,
+          status: msg.structuredData ? 'COMPLETED' as TaskStatus : undefined,
         }));
+        state.messages = chatMessages;
+
+        // Extract the latest itinerary from loaded messages for the panel
+        const lastItineraryMsg = [...chatMessages].reverse().find((m) => m.itinerary);
+        state.itinerary = lastItineraryMsg?.itinerary ?? null;
+      })
+      .addCase(loadConversationHistory.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message || 'Failed to load conversation history';
       });
   },
 });

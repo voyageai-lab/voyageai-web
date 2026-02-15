@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { fetchProjects, deleteProject, setActiveProject } from '@/store/projectsSlice';
-import { resetChat, loadConversationHistory, setCurrentProjectId } from '@/store/chatSlice';
+import { resetChat, clearChatForProject, loadConversationHistory, setCurrentProjectId } from '@/store/chatSlice';
 import { logout } from '@/store/authSlice';
 
 export function Sidebar() {
@@ -21,8 +21,13 @@ export function Sidebar() {
   };
 
   const handleSelectProject = (projectId: string) => {
+    if (projectId === activeProjectId) return; // Already selected
+    // 1. Clear old chat state first
+    dispatch(clearChatForProject());
+    // 2. Set active project in both slices
     dispatch(setActiveProject(projectId));
     dispatch(setCurrentProjectId(projectId));
+    // 3. Load conversation history for the selected project
     dispatch(loadConversationHistory(projectId));
   };
 

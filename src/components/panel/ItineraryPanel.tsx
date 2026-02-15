@@ -1,6 +1,23 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAppSelector } from '@/store/hooks';
 import type { Activity, DailyItinerary, StructuredItinerary, ToolTrace } from '@/types';
+
+// Fix Leaflet default marker icon (broken in bundlers)
+const defaultIcon = L.icon({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41],
+});
+L.Marker.prototype.options.icon = defaultIcon;
+
+type TabType = 'itinerary' | 'map' | 'tools';
 
 interface ItineraryPanelProps {
   onClose: () => void;
@@ -8,7 +25,7 @@ interface ItineraryPanelProps {
 
 export function ItineraryPanel({ onClose }: ItineraryPanelProps) {
   const { itinerary, toolTrace } = useAppSelector((s) => s.chat);
-  const [activeTab, setActiveTab] = useState<'itinerary' | 'tools'>('itinerary');
+  const [activeTab, setActiveTab] = useState<TabType>('itinerary');
 
   if (!itinerary) {
     return (
@@ -23,27 +40,22 @@ export function ItineraryPanel({ onClose }: ItineraryPanelProps) {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
         <div className="flex gap-1">
-          <button
+          <TabButton
+            label="Itinerary"
+            active={activeTab === 'itinerary'}
             onClick={() => setActiveTab('itinerary')}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-              activeTab === 'itinerary'
-                ? 'bg-blue-100 text-blue-700'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}
-          >
-            Itinerary
-          </button>
+          />
+          <TabButton
+            label="Map"
+            active={activeTab === 'map'}
+            onClick={() => setActiveTab('map')}
+          />
           {toolTrace.length > 0 && (
-            <button
+            <TabButton
+              label={`Tools (${toolTrace.length})`}
+              active={activeTab === 'tools'}
               onClick={() => setActiveTab('tools')}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                activeTab === 'tools'
-                  ? 'bg-blue-100 text-blue-700'
-                  : 'text-gray-500 hover:bg-gray-100'
-              }`}
-            >
-              Tools ({toolTrace.length})
-            </button>
+            />
           )}
         </div>
         <button
@@ -60,6 +72,8 @@ export function ItineraryPanel({ onClose }: ItineraryPanelProps) {
       <div className="flex-1 overflow-y-auto">
         {activeTab === 'itinerary' ? (
           <ItineraryContent itinerary={itinerary} />
+        ) : activeTab === 'map' ? (
+          <MapContent itinerary={itinerary} />
         ) : (
           <ToolTraceContent traces={toolTrace} />
         )}
@@ -67,6 +81,128 @@ export function ItineraryPanel({ onClose }: ItineraryPanelProps) {
     </div>
   );
 }
+
+function TabButton({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+        active
+          ? 'bg-blue-100 text-blue-700'
+          : 'text-gray-500 hover:bg-gray-100'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
+// ─── Map Content ──────────────────────────────────────────────
+
+interface MarkerData {
+  lat: number;
+  lng: number;
+  title: string;
+  time: string;
+  day: number;
+  description: string;
+}
+
+function MapContent({ itinerary }: { itinerary: StructuredItinerary }) {
+  const markers = useMemo(() => {
+    const result: MarkerData[] = [];
+    for (const day of itinerary.days) {
+      for (const act of day.activities) {
+        if (act.location?.latitude && act.location?.longitude) {
+          result.push({
+            lat: act.location.latitude,
+            lng: act.location.longitude,
+            title: act.title,
+            time: act.time,
+            day: day.dayNumber,
+            description: act.location.name || act.description,
+          });
+        }
+      }
+    }
+    return result;
+  }, [itinerary]);
+
+  if (markers.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-full p-8">
+        <div className="text-center">
+          <svg className="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+          </svg>
+          <p className="text-sm text-gray-400">No location coordinates available</p>
+          <p className="text-xs text-gray-300 mt-1">Activities need latitude/longitude data to show on the map</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate bounds center
+  const centerLat = markers.reduce((sum, m) => sum + m.lat, 0) / markers.length;
+  const centerLng = markers.reduce((sum, m) => sum + m.lng, 0) / markers.length;
+
+  // Day colors for visual grouping
+  const dayColors = ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#F97316'];
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex-1 relative" style={{ minHeight: '400px' }}>
+        <MapContainer
+          center={[centerLat, centerLng]}
+          zoom={12}
+          style={{ height: '100%', width: '100%' }}
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {markers.map((marker, idx) => (
+            <Marker key={idx} position={[marker.lat, marker.lng]}>
+              <Popup>
+                <div className="text-xs">
+                  <p className="font-semibold" style={{ color: dayColors[(marker.day - 1) % dayColors.length] }}>
+                    Day {marker.day}
+                  </p>
+                  <p className="font-medium mt-0.5">{marker.title}</p>
+                  <p className="text-gray-500">{marker.time}</p>
+                  <p className="text-gray-400 mt-0.5">{marker.description}</p>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
+        </MapContainer>
+      </div>
+
+      {/* Legend */}
+      <div className="border-t border-gray-200 p-3">
+        <p className="text-xs text-gray-400 mb-2">{markers.length} locations plotted</p>
+        <div className="flex flex-wrap gap-2">
+          {itinerary.days.map((day) => (
+            <span
+              key={day.dayNumber}
+              className="text-xs px-2 py-0.5 rounded-full border"
+              style={{
+                color: dayColors[(day.dayNumber - 1) % dayColors.length],
+                borderColor: dayColors[(day.dayNumber - 1) % dayColors.length],
+                backgroundColor: dayColors[(day.dayNumber - 1) % dayColors.length] + '10',
+              }}
+            >
+              Day {day.dayNumber}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Itinerary Content ────────────────────────────────────────
 
 function ItineraryContent({ itinerary }: { itinerary: StructuredItinerary }) {
   const meta = itinerary.metadata;
@@ -191,6 +327,8 @@ function ActivityRow({ activity }: { activity: Activity }) {
     </div>
   );
 }
+
+// ─── Tool Trace Content ───────────────────────────────────────
 
 function ToolTraceContent({ traces }: { traces: ToolTrace[] }) {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
