@@ -6,8 +6,8 @@ import {
   setCompleted,
   setFailed,
   setSseConnected,
-} from '@/store/planningSlice';
-import type { Itinerary, TaskStatus, ToolTrace } from '@/types';
+} from '@/store/chatSlice';
+import type { StructuredItinerary, TaskStatus, ToolTrace } from '@/types';
 
 /**
  * Hook that manages an SSE connection for real-time task updates.
@@ -32,118 +32,82 @@ export function useSSE(taskId: string | null) {
     eventSourceRef.current = es;
     dispatch(setSseConnected(true));
 
-    // Handle progress events
-    es.addEventListener('progress', (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        dispatch(
-          setProgress({
-            status: data.status as TaskStatus,
-            progress: data.progress ?? 0,
-            message: data.message ?? data.progressMessage ?? '',
-          }),
-        );
-      } catch {
-        // Ignore malformed events
-      }
-    });
+    const handleStatusData = (data: Record<string, unknown>) => {
+      const status = (data.status as TaskStatus) || 'PROCESSING';
+      const progress =
+        (data.progressPercent as number) ?? (data.progress as number) ?? 0;
+      const message =
+        (data.progressMessage as string) ??
+        (data.message as string) ??
+        '';
 
-    // Handle status events (initial state, updates)
-    es.addEventListener('status', (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        dispatch(
-          setProgress({
-            status: data.status as TaskStatus,
-            progress: data.progress ?? 0,
-            message: data.message ?? data.progressMessage ?? '',
-          }),
-        );
-      } catch {
-        // Ignore
-      }
-    });
-
-    // Handle completed event
-    es.addEventListener('completed', (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        let itinerary: Itinerary | null = null;
+      if (status === 'COMPLETED') {
+        // Extract structured itinerary
+        let itinerary: StructuredItinerary | null =
+          (data.structuredItinerary as StructuredItinerary) || null;
         let toolTrace: ToolTrace[] = [];
 
-        if (data.result) {
+        // Fallback: try parsing from result string
+        if (!itinerary && data.result) {
           try {
-            const parsed = JSON.parse(data.result);
-            itinerary = parsed;
+            itinerary = JSON.parse(data.result as string);
           } catch {
-            // result might not be parseable
+            // ignore
           }
         }
 
         if (data.toolTrace) {
-          toolTrace = data.toolTrace;
+          toolTrace = data.toolTrace as ToolTrace[];
         }
 
-        if (itinerary) {
-          dispatch(setCompleted({ itinerary, toolTrace }));
-        } else {
-          dispatch(
-            setProgress({
-              status: 'COMPLETED',
-              progress: 100,
-              message: 'Completed',
-            }),
-          );
-        }
-      } catch {
-        // Ignore
+        dispatch(
+          setCompleted({
+            itinerary,
+            toolTrace,
+            rawResult: data.result as string,
+          }),
+        );
+        es.close();
+        dispatch(setSseConnected(false));
+      } else if (status === 'FAILED') {
+        dispatch(
+          setFailed(
+            (data.errorMessage as string) ||
+              (data.message as string) ||
+              'Unknown error',
+          ),
+        );
+        es.close();
+        dispatch(setSseConnected(false));
+      } else if (status === 'CANCELLED') {
+        dispatch(setFailed('Task was cancelled'));
+        es.close();
+        dispatch(setSseConnected(false));
+      } else {
+        dispatch(setProgress({ status, progress, message }));
       }
-      es.close();
-      dispatch(setSseConnected(false));
-    });
+    };
 
-    // Handle failed event
-    es.addEventListener('failed', (event: MessageEvent) => {
+    // Handle named events (progress, status, completed, failed)
+    const handleEvent = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
-        dispatch(setFailed(data.errorMessage || data.message || 'Unknown error'));
+        handleStatusData(data);
       } catch {
-        dispatch(setFailed('Task failed'));
+        // Ignore malformed events
       }
-      es.close();
-      dispatch(setSseConnected(false));
-    });
+    };
+
+    es.addEventListener('progress', handleEvent);
+    es.addEventListener('status', handleEvent);
+    es.addEventListener('completed', handleEvent);
+    es.addEventListener('failed', handleEvent);
 
     // Handle generic messages (fallback)
     es.onmessage = (event: MessageEvent) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.status === 'COMPLETED') {
-          if (data.result) {
-            try {
-              const itinerary = JSON.parse(data.result);
-              dispatch(setCompleted({ itinerary }));
-            } catch {
-              dispatch(
-                setProgress({ status: 'COMPLETED', progress: 100, message: 'Done' }),
-              );
-            }
-          }
-          es.close();
-          dispatch(setSseConnected(false));
-        } else if (data.status === 'FAILED') {
-          dispatch(setFailed(data.errorMessage || 'Failed'));
-          es.close();
-          dispatch(setSseConnected(false));
-        } else {
-          dispatch(
-            setProgress({
-              status: data.status || 'PROCESSING',
-              progress: data.progress ?? 0,
-              message: data.message || data.progressMessage || '',
-            }),
-          );
-        }
+        handleStatusData(data);
       } catch {
         // Ignore
       }

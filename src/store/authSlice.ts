@@ -31,6 +31,13 @@ export const register = createAsyncThunk<AuthResponse, RegisterRequest>(
   },
 );
 
+export const fetchCurrentUser = createAsyncThunk<User, void>(
+  'auth/fetchCurrentUser',
+  async () => {
+    return apiClient.get<User>('/auth/me');
+  },
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -46,6 +53,10 @@ const authSlice = createSlice({
     },
     setUser(state, action: PayloadAction<User>) {
       state.user = action.payload;
+    },
+    setToken(state, action: PayloadAction<string>) {
+      state.token = action.payload;
+      Cookies.set('token', action.payload, { expires: 1 });
     },
   },
   extraReducers: (builder) => {
@@ -77,9 +88,18 @@ const authSlice = createSlice({
       .addCase(register.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message || 'Registration failed';
+      })
+      .addCase(fetchCurrentUser.fulfilled, (state, action) => {
+        state.user = action.payload;
+      })
+      .addCase(fetchCurrentUser.rejected, (state) => {
+        // Token invalid, clear auth
+        state.user = null;
+        state.token = null;
+        Cookies.remove('token');
       });
   },
 });
 
-export const { logout, clearError, setUser } = authSlice.actions;
+export const { logout, clearError, setUser, setToken } = authSlice.actions;
 export default authSlice.reducer;

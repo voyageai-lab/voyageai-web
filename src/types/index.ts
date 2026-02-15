@@ -28,6 +28,23 @@ export interface User {
 }
 
 // ==============================
+// Project Types
+// ==============================
+
+export interface Project {
+  projectId: string;
+  title: string;
+  description: string | null;
+  status: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateProjectRequest {
+  title: string;
+}
+
+// ==============================
 // Planning Types
 // ==============================
 
@@ -48,77 +65,82 @@ export type TaskStatus =
   | 'FAILED'
   | 'CANCELLED';
 
-export interface PlanningTask {
+export interface TaskStatusResponse {
   taskId: string;
-  userId: string;
-  projectId: string;
+  taskType: string | null;
   status: TaskStatus;
-  progress: number;
-  progressMessage: string;
+  progressMessage: string | null;
+  progressPercent: number | null;
+  requirements: string | null;
+  structuredItinerary: StructuredItinerary | null;
   result: string | null;
   errorMessage: string | null;
   createdAt: string;
   updatedAt: string;
+  completedAt: string | null;
 }
 
 // ==============================
-// SSE Event Types
+// SSE Event Types (TaskStatusUpdate from Java backend)
 // ==============================
 
-export interface SSEProgressEvent {
+export interface SSETaskUpdate {
   taskId: string;
   status: TaskStatus;
-  progress: number;
-  message: string;
-}
-
-export interface SSECompletedEvent {
-  taskId: string;
-  status: 'COMPLETED';
-  progress: 100;
-  result: string;
-}
-
-export interface SSEFailedEvent {
-  taskId: string;
-  status: 'FAILED';
-  errorMessage: string;
+  progressMessage: string | null;
+  progressPercent: number | null;
+  structuredItinerary: StructuredItinerary | null;
+  result: string | null;
+  errorMessage: string | null;
+  timestamp: number;
 }
 
 // ==============================
 // Itinerary Types (matches Java StructuredItinerary)
 // ==============================
 
-export interface Itinerary {
+export interface StructuredItinerary {
+  metadata: ItineraryMetadata;
+  days: DailyItinerary[];
+  tips?: string[];
+}
+
+export interface ItineraryMetadata {
   destination: string;
   startDate: string;
   endDate: string;
-  totalBudget: number;
-  currency: string;
-  travelers: number;
-  summary: string;
-  days: ItineraryDay[];
+  totalDays: number;
+  budget: string;
+  interests: string[];
 }
 
-export interface ItineraryDay {
+export interface DailyItinerary {
   dayNumber: number;
   date: string;
   theme: string;
   activities: Activity[];
-  dailyBudget: number;
+  summary?: string;
 }
 
 export interface Activity {
+  activityId: string;
   time: string;
-  name: string;
+  title: string;
   description: string;
-  location: string;
+  location: Location;
+  type?: string;
+  estimatedCost?: string;
+  tips?: string;
+  notes?: string[];
+  durationMinutes?: number;
+}
+
+export interface Location {
+  name: string;
   latitude: number;
   longitude: number;
-  duration: string;
-  cost: number;
-  category: string;
-  tips: string;
+  address?: string;
+  placeType?: string;
 }
 
 // ==============================
@@ -130,4 +152,43 @@ export interface ToolTrace {
   arguments: Record<string, unknown>;
   latency_ms: number;
   success: boolean;
+}
+
+// ==============================
+// Chat Message Types (for frontend chat UI)
+// ==============================
+
+export type ChatMessageRole = 'user' | 'assistant' | 'system';
+
+export interface ChatMessage {
+  id: string;
+  role: ChatMessageRole;
+  content: string;
+  timestamp: string;
+  taskId?: string;
+  itinerary?: StructuredItinerary;
+  toolTrace?: ToolTrace[];
+  status?: TaskStatus;
+  progress?: number;
+  progressMessage?: string;
+}
+
+// ==============================
+// Conversation History (from backend)
+// ==============================
+
+export interface ConversationMessage {
+  messageId: string;
+  projectId: string;
+  role: string;
+  messageType: string;
+  content: string;
+  structuredData?: string;
+  timestamp: string;
+}
+
+export interface ConversationHistoryResponse {
+  projectId: string;
+  messages: ConversationMessage[];
+  totalCount: number;
 }

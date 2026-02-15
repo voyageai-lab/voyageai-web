@@ -1,7 +1,7 @@
 /**
  * HTTP API client for the VoyageAI Java backend.
  *
- * All requests go through the Vite proxy (/api → localhost:8081)
+ * All requests go through the Vite proxy (/api -> localhost:8081)
  * so we don't need CORS configuration in development.
  */
 import Cookies from 'js-cookie';
@@ -45,6 +45,28 @@ class ApiClient {
       throw new ApiError(res.status, await res.text());
     }
     return res.json();
+  }
+
+  async put<T>(path: string, body?: unknown): Promise<T> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: 'PUT',
+      headers: this.getHeaders(),
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, await res.text());
+    }
+    return res.json();
+  }
+
+  async delete(path: string): Promise<void> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(false),
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, await res.text());
+    }
   }
 
   /**

@@ -16,7 +16,7 @@ export function RegisterForm() {
     dispatch(clearError());
     const result = await dispatch(register({ email, password, displayName: displayName || undefined }));
     if (register.fulfilled.match(result)) {
-      navigate('/planning');
+      navigate('/');
     }
   };
 
