@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { register, clearError } from '@/store/authSlice';
 
 export function RegisterForm() {
-  const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const dispatch = useAppDispatch();
@@ -14,7 +14,7 @@ export function RegisterForm() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     dispatch(clearError());
-    const result = await dispatch(register({ username, email, password }));
+    const result = await dispatch(register({ email, password, displayName: displayName || undefined }));
     if (register.fulfilled.match(result)) {
       navigate('/planning');
     }
@@ -33,14 +33,13 @@ export function RegisterForm() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Display Name</label>
             <input
               type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
+              value={displayName}
+              onChange={(e) => setDisplayName(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none transition"
-              placeholder="yourname"
+              placeholder="Your Name (optional)"
             />
           </div>
           <div>

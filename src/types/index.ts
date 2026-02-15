@@ -8,20 +8,23 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  username: string;
   email: string;
   password: string;
+  displayName?: string;
 }
 
 export interface AuthResponse {
   token: string;
-  username: string;
-  email: string;
+  tokenType: string;
+  user: User;
 }
 
 export interface User {
-  username: string;
+  id: number;
   email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  authProvider: string;
 }
 
 // ==============================
@@ -30,13 +33,12 @@ export interface User {
 
 export interface PlanningRequest {
   requirements: string;
-  projectId: string;
 }
 
 export interface PlanningSubmitResponse {
   taskId: string;
-  status: string;
   message: string;
+  statusUrl: string;
 }
 
 export type TaskStatus =

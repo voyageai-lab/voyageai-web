@@ -32,7 +32,7 @@ export function Navbar() {
               </Link>
               <div className="flex items-center gap-2 text-gray-500 text-sm">
                 <User className="w-4 h-4" />
-                {user?.username || user?.email || 'User'}
+                {user?.displayName || user?.email || 'User'}
               </div>
               <button
                 onClick={handleLogout}

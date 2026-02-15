@@ -57,10 +57,7 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.loading = false;
         state.token = action.payload.token;
-        state.user = {
-          username: action.payload.username,
-          email: action.payload.email,
-        };
+        state.user = action.payload.user;
         Cookies.set('token', action.payload.token, { expires: 1 });
       })
       .addCase(login.rejected, (state, action) => {
@@ -74,10 +71,7 @@ const authSlice = createSlice({
       .addCase(register.fulfilled, (state, action) => {
         state.loading = false;
         state.token = action.payload.token;
-        state.user = {
-          username: action.payload.username,
-          email: action.payload.email,
-        };
+        state.user = action.payload.user;
         Cookies.set('token', action.payload.token, { expires: 1 });
       })
       .addCase(register.rejected, (state, action) => {

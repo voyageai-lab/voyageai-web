@@ -28,13 +28,13 @@ describe('authSlice', () => {
 
   it('should handle setUser', () => {
     const store = createStore();
-    store.dispatch(setUser({ username: 'test', email: 'test@example.com' }));
-    expect(store.getState().auth.user?.username).toBe('test');
+    store.dispatch(setUser({ id: 1, email: 'test@example.com', displayName: 'test', avatarUrl: null, authProvider: 'LOCAL' }));
+    expect(store.getState().auth.user?.displayName).toBe('test');
   });
 
   it('should handle logout', () => {
     const store = createStore();
-    store.dispatch(setUser({ username: 'test', email: 'test@example.com' }));
+    store.dispatch(setUser({ id: 1, email: 'test@example.com', displayName: 'test', avatarUrl: null, authProvider: 'LOCAL' }));
     store.dispatch(logout());
     expect(store.getState().auth.user).toBeNull();
     expect(store.getState().auth.token).toBeNull();

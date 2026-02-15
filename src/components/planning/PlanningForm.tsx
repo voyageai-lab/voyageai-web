@@ -5,7 +5,6 @@ import { submitPlanning, resetPlanning } from '@/store/planningSlice';
 
 export function PlanningForm() {
   const [requirements, setRequirements] = useState('');
-  const [projectId] = useState(() => `proj-${Date.now()}`);
   const dispatch = useAppDispatch();
   const { loading, status } = useAppSelector((s) => s.planning);
 
@@ -13,7 +12,7 @@ export function PlanningForm() {
     e.preventDefault();
     if (!requirements.trim()) return;
     dispatch(resetPlanning());
-    dispatch(submitPlanning({ requirements: requirements.trim(), projectId }));
+    dispatch(submitPlanning({ requirements: requirements.trim() }));
   };
 
   const isProcessing = loading || (status === 'PROCESSING');
