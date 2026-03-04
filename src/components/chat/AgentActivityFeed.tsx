@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { AgentEvent } from '@/types';
 import { PlanOutlineCard } from './PlanOutlineCard';
 
@@ -29,17 +29,23 @@ export function AgentActivityFeed({ events }: AgentActivityFeedProps) {
   return (
     <div className="mt-2 space-y-1.5 pl-11 max-h-64 overflow-y-auto text-xs">
       {events.map((event, idx) => (
-        <EventRow key={idx} event={event} isLatest={idx === events.length - 1} />
+        <EventRow key={idx} event={event} isLatest={idx === events.length - 1} allEvents={events} />
       ))}
       <div ref={scrollRef} />
     </div>
   );
 }
 
-function EventRow({ event, isLatest }: { event: AgentEvent; isLatest: boolean }) {
+function EventRow({ event, isLatest, allEvents }: { event: AgentEvent; isLatest: boolean; allEvents: AgentEvent[] }) {
   switch (event.type) {
-    case 'thinking':
-      return <ThinkingEvent text={String(event.data.text || '')} animate={isLatest} />;
+    case 'thinking': {
+      const text = String(event.data.message || event.data.text || '');
+      const isReasoning = event.data.source === 'reasoning_model';
+      if (isReasoning) {
+        return <ReasoningEvent text={text} model={String(event.data.model || '')} animate={isLatest} />;
+      }
+      return <ThinkingEvent text={text} animate={isLatest} />;
+    }
     case 'tool_start':
       return <ToolStartEvent tool={String(event.data.tool || '')} args={event.data.arguments as Record<string, unknown> | undefined} />;
     case 'tool_result':
@@ -50,6 +56,12 @@ function EventRow({ event, isLatest }: { event: AgentEvent; isLatest: boolean })
       return <PlanOutlineEvent data={event.data} />;
     case 'cost_summary':
       return <CostSummaryEvent data={event.data} />;
+    case 'auth_required':
+      return <AuthRequiredEvent event={event} allEvents={allEvents} />;
+    case 'auth_success':
+      return <AuthSuccessEvent event={event} />;
+    case 'auth_expired':
+      return <AuthExpiredEvent event={event} />;
     default:
       return null;
   }
@@ -62,6 +74,49 @@ function ThinkingEvent({ text, animate }: { text: string; animate: boolean }) {
         <BrainIcon />
       </span>
       <p className="leading-relaxed">{text}</p>
+    </div>
+  );
+}
+
+/**
+ * Displays o-series model reasoning/thinking content (chain-of-thought).
+ * Shows a collapsible section since reasoning can be quite long (2000+ tokens).
+ * This gives users visibility into HOW the AI is thinking, not just WHAT it outputs.
+ */
+function ReasoningEvent({ text, model, animate }: { text: string; model: string; animate: boolean }) {
+  // Split reasoning into paragraphs for readability
+  const paragraphs = text.split('\n').filter(p => p.trim());
+  const isLong = text.length > 300;
+
+  return (
+    <div className="mt-1 rounded-lg border border-purple-200 bg-gradient-to-r from-purple-50 to-indigo-50 p-3 text-xs">
+      {/* Header */}
+      <div className="flex items-center gap-1.5 font-medium text-purple-700 mb-1.5">
+        <span className={animate ? 'animate-pulse' : ''}>
+          <SparklesIcon />
+        </span>
+        <span>AI Reasoning</span>
+        {model && <span className="text-purple-400 font-normal ml-1">({model})</span>}
+      </div>
+      {/* Content */}
+      {isLong ? (
+        <details className="group" open={animate}>
+          <summary className="cursor-pointer text-purple-500 hover:text-purple-700 select-none mb-1">
+            {animate ? 'Thinking process (click to collapse)' : `Show thinking (${paragraphs.length} steps)`}
+          </summary>
+          <div className="space-y-1.5 text-gray-700 leading-relaxed max-h-48 overflow-y-auto">
+            {paragraphs.map((p, i) => (
+              <p key={i} className="text-gray-600">{p}</p>
+            ))}
+          </div>
+        </details>
+      ) : (
+        <div className="space-y-1 text-gray-600 leading-relaxed">
+          {paragraphs.map((p, i) => (
+            <p key={i}>{p}</p>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -199,6 +254,100 @@ function CostSummaryEvent({ data }: { data: Record<string, unknown> }) {
   );
 }
 
+// ── Auth Events (QR Code Login Flow) ────────────────────────
+
+function AuthRequiredEvent({ event, allEvents }: { event: AgentEvent; allEvents: AgentEvent[] }) {
+  const service = String(event.data.service || 'unknown');
+  const serviceName = String(event.data.serviceName || service);
+  const qrBase64 = String(event.data.qrCodeBase64 || '');
+  const expiresAt = String(event.data.expiresAt || '');
+  const message = String(event.data.message || '请扫码登录');
+
+  // Check if a subsequent auth_success or auth_expired event exists for this service
+  const resolved = allEvents.some(
+    (e) =>
+      (e.type === 'auth_success' || e.type === 'auth_expired') &&
+      String(e.data.service) === service
+  );
+
+  return (
+    <div className="mt-1 rounded-lg border border-orange-200 bg-gradient-to-r from-orange-50 to-amber-50 p-3 text-xs">
+      <div className="flex items-center gap-1.5 font-medium text-orange-700 mb-2">
+        <QrCodeIcon />
+        <span>{serviceName} 登录验证</span>
+      </div>
+      {resolved ? (
+        <p className="text-gray-400 text-center py-1">已处理</p>
+      ) : (
+        <>
+          <p className="text-gray-600 mb-2">{message}</p>
+          {qrBase64 && (
+            <div className="flex justify-center mb-2">
+              <img
+                src={`data:image/png;base64,${qrBase64}`}
+                alt="Login QR Code"
+                className="w-40 h-40 rounded border border-gray-200"
+              />
+            </div>
+          )}
+          {expiresAt && <CountdownTimer expiresAt={expiresAt} />}
+        </>
+      )}
+    </div>
+  );
+}
+
+function AuthSuccessEvent({ event }: { event: AgentEvent }) {
+  const serviceName = String(event.data.serviceName || event.data.service || 'Service');
+  return (
+    <div className="flex items-center gap-2 text-green-600 py-0.5">
+      <span className="shrink-0"><CheckIcon /></span>
+      <span className="font-medium">{serviceName} 登录成功</span>
+    </div>
+  );
+}
+
+function AuthExpiredEvent({ event }: { event: AgentEvent }) {
+  const serviceName = String(event.data.serviceName || event.data.service || 'Service');
+  const message = String(event.data.message || '登录超时');
+  return (
+    <div className="flex items-center gap-2 text-gray-400 py-0.5">
+      <span className="shrink-0"><XIcon /></span>
+      <span>{serviceName}: {message}</span>
+    </div>
+  );
+}
+
+function CountdownTimer({ expiresAt }: { expiresAt: string }) {
+  const [remaining, setRemaining] = useState<number>(() => {
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    return Math.max(0, Math.floor(diff / 1000));
+  });
+
+  useEffect(() => {
+    if (remaining <= 0) return;
+    const timer = setInterval(() => {
+      const diff = new Date(expiresAt).getTime() - Date.now();
+      const secs = Math.max(0, Math.floor(diff / 1000));
+      setRemaining(secs);
+      if (secs <= 0) clearInterval(timer);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [expiresAt, remaining]);
+
+  if (remaining <= 0) {
+    return <p className="text-center text-gray-400 text-[11px]">二维码已过期</p>;
+  }
+
+  const mins = Math.floor(remaining / 60);
+  const secs = remaining % 60;
+  return (
+    <p className="text-center text-orange-500 text-[11px]">
+      请在 {mins}:{secs.toString().padStart(2, '0')} 内扫码
+    </p>
+  );
+}
+
 // ── Small SVG Icons ─────────────────────────────────────────
 
 function BrainIcon() {
@@ -237,6 +386,27 @@ function DollarIcon() {
   return (
     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
       <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  );
+}
+
+function SparklesIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z" />
+      <path d="M19 13l.75 2.25L22 16l-2.25.75L19 19l-.75-2.25L16 16l2.25-.75L19 13z" />
+    </svg>
+  );
+}
+
+function QrCodeIcon() {
+  return (
+    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <rect x="14" y="14" width="3" height="3" />
+      <path d="M21 14h-3v3h3v4h-7v-7h4" />
     </svg>
   );
 }

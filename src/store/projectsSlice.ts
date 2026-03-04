@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
 import { apiClient } from '@/api/client';
-import type { Project } from '@/types';
+import type { Project, ShareResponse } from '@/types';
 
 interface ProjectsState {
   projects: Project[];
@@ -36,6 +36,21 @@ export const renameProject = createAsyncThunk<
   { projectId: string; title: string }
 >('projects/rename', async ({ projectId, title }) => {
   return apiClient.put<Project>(`/projects/${projectId}`, { title });
+});
+
+export const shareProject = createAsyncThunk<
+  ShareResponse,
+  string
+>('projects/share', async (projectId) => {
+  return apiClient.post<ShareResponse>(`/projects/${projectId}/share`);
+});
+
+export const revokeShare = createAsyncThunk<
+  string,
+  string
+>('projects/revokeShare', async (projectId) => {
+  await apiClient.delete(`/projects/${projectId}/share`);
+  return projectId;
 });
 
 const projectsSlice = createSlice({
@@ -82,6 +97,24 @@ const projectsSlice = createSlice({
         );
         if (idx !== -1) {
           state.projects[idx] = action.payload;
+        }
+      })
+      .addCase(shareProject.fulfilled, (state, action) => {
+        const idx = state.projects.findIndex(
+          (p) => p.projectId === action.payload.projectId,
+        );
+        if (idx !== -1) {
+          state.projects[idx].visibility = action.payload.visibility as Project['visibility'];
+          state.projects[idx].shareToken = action.payload.shareToken;
+        }
+      })
+      .addCase(revokeShare.fulfilled, (state, action) => {
+        const idx = state.projects.findIndex(
+          (p) => p.projectId === action.payload,
+        );
+        if (idx !== -1) {
+          state.projects[idx].visibility = 'PRIVATE';
+          state.projects[idx].shareToken = null;
         }
       });
   },

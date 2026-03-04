@@ -138,7 +138,28 @@ const chatSlice = createSlice({
         if (!lastMsg.agentEvents) {
           lastMsg.agentEvents = [];
         }
-        lastMsg.agentEvents.push(action.payload);
+        const events = lastMsg.agentEvents;
+        const incoming = action.payload;
+
+        // For heartbeat "thinking" events (NOT reasoning model output),
+        // replace the previous heartbeat instead of stacking duplicates.
+        // This keeps the feed clean: only the latest heartbeat is shown.
+        if (
+          incoming.type === 'thinking' &&
+          incoming.data?.source !== 'reasoning_model' &&
+          events.length > 0
+        ) {
+          const prev = events[events.length - 1];
+          if (
+            prev.type === 'thinking' &&
+            prev.data?.source !== 'reasoning_model'
+          ) {
+            events[events.length - 1] = incoming;
+            return;
+          }
+        }
+
+        events.push(incoming);
       }
     },
     setSseConnected(state, action: PayloadAction<boolean>) {
@@ -221,7 +242,7 @@ const chatSlice = createSlice({
           id: msg.messageId,
           role: msg.role === 'USER' ? 'user' : msg.role === 'ASSISTANT' ? 'assistant' : 'system',
           content: msg.content,
-          timestamp: msg.timestamp,
+          timestamp: normalizeTimestamp(msg.timestamp),
           itinerary: msg.structuredData ? tryParseItinerary(msg.structuredData) : undefined,
           status: msg.structuredData ? 'COMPLETED' as TaskStatus : undefined,
         }));
@@ -237,6 +258,22 @@ const chatSlice = createSlice({
       });
   },
 });
+
+/**
+ * Backend sends Instant as epoch seconds (e.g. 1771185801.085606).
+ * JavaScript Date expects epoch milliseconds or ISO string.
+ * Convert to ISO string for consistent handling.
+ */
+function normalizeTimestamp(ts: string): string {
+  const num = Number(ts);
+  if (!isNaN(num) && num > 0) {
+    // Epoch seconds if value is < 10 billion (before year 2286 in seconds)
+    // Epoch milliseconds if value is > 10 billion
+    const ms = num < 1e10 ? num * 1000 : num;
+    return new Date(ms).toISOString();
+  }
+  return ts;
+}
 
 function tryParseItinerary(json: string): StructuredItinerary | undefined {
   try {

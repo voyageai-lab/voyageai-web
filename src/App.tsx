@@ -8,6 +8,10 @@ import { AppLayout } from '@/components/layout/AppLayout';
 import { LoginForm } from '@/components/auth/LoginForm';
 import { RegisterForm } from '@/components/auth/RegisterForm';
 import { AuthCallbackPage } from '@/pages/AuthCallbackPage';
+import { SharedViewPage } from '@/pages/SharedViewPage';
+import { CommunityPage } from '@/pages/CommunityPage';
+import { PostPage } from '@/pages/PostPage';
+import { InvitationPage } from '@/pages/InvitationPage';
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { token } = useAppSelector((s) => s.auth);
@@ -33,6 +37,37 @@ function AppRoutes() {
       <Route path="/login" element={<LoginForm />} />
       <Route path="/register" element={<RegisterForm />} />
       <Route path="/auth/callback" element={<AuthCallbackPage />} />
+
+      {/* Public routes (no auth required) */}
+      <Route path="/shared/:token" element={<SharedViewPage />} />
+
+      {/* Protected routes: Community */}
+      <Route
+        path="/community"
+        element={
+          <AuthGuard>
+            <CommunityPage />
+          </AuthGuard>
+        }
+      />
+      <Route
+        path="/community/:postId"
+        element={
+          <AuthGuard>
+            <PostPage />
+          </AuthGuard>
+        }
+      />
+
+      {/* Protected routes: Collaboration invitations */}
+      <Route
+        path="/invitations/:token"
+        element={
+          <AuthGuard>
+            <InvitationPage />
+          </AuthGuard>
+        }
+      />
 
       {/* Protected routes with URL-based project/chat navigation */}
       <Route

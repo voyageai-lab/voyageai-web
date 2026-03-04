@@ -11,11 +11,18 @@ import {
   setCurrentProjectId,
   resetChat,
 } from '@/store/chatSlice';
+import type { StructuredItinerary } from '@/types';
+
+interface SelectedItinerary {
+  itinerary: StructuredItinerary;
+  version: number;
+  timestamp: string;
+}
 
 export function AppLayout() {
   const dispatch = useAppDispatch();
   const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
-  const [showPanel, setShowPanel] = useState(false);
+  const [selected, setSelected] = useState<SelectedItinerary | null>(null);
   const { itinerary, currentProjectId, currentTaskId } = useAppSelector(
     (s) => s.chat,
   );
@@ -47,21 +54,27 @@ export function AppLayout() {
       dispatch(setActiveProject(urlProjectId));
       dispatch(setCurrentProjectId(urlProjectId));
       dispatch(loadConversationHistory(urlProjectId));
+      setSelected(null);
     } else {
       // URL is /chat (no projectId) → reset to new chat
       dispatch(setActiveProject(null));
       dispatch(resetChat());
+      setSelected(null);
     }
   }, [urlProjectId, dispatch]);
 
-  // Auto-show panel when itinerary arrives (from null → object)
+  // Auto-show panel when a new itinerary arrives from generation (null → object)
   useEffect(() => {
     if (itinerary && !prevItineraryRef.current) {
-      setShowPanel(true);
+      setSelected({
+        itinerary,
+        version: 0,
+        timestamp: new Date().toISOString(),
+      });
     }
     // Hide panel if itinerary is removed (e.g. project switch cleared it)
     if (!itinerary && prevItineraryRef.current) {
-      setShowPanel(false);
+      setSelected(null);
     }
     prevItineraryRef.current = itinerary;
   }, [itinerary]);
@@ -73,12 +86,21 @@ export function AppLayout() {
 
       {/* Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        <ChatArea onViewItinerary={() => setShowPanel(true)} />
+        <ChatArea
+          onViewItinerary={(it, version, timestamp) =>
+            setSelected({ itinerary: it, version, timestamp })
+          }
+        />
       </div>
 
       {/* Itinerary Panel (collapsible) */}
-      {showPanel && itinerary && (
-        <ItineraryPanel onClose={() => setShowPanel(false)} />
+      {selected && (
+        <ItineraryPanel
+          itinerary={selected.itinerary}
+          version={selected.version}
+          timestamp={selected.timestamp}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );

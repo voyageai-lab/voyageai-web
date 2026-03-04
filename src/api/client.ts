@@ -73,6 +73,21 @@ class ApiClient {
    * Create an SSE (Server-Sent Events) connection for real-time updates.
    * Returns the EventSource for the caller to attach listeners.
    */
+  async deleteJson<T>(path: string): Promise<T> {
+    const res = await fetch(`${BASE_URL}${path}`, {
+      method: 'DELETE',
+      headers: this.getHeaders(false),
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, await res.text());
+    }
+    return res.json();
+  }
+
+  /**
+   * Create an SSE (Server-Sent Events) connection for real-time updates.
+   * Returns the EventSource for the caller to attach listeners.
+   */
   createSSE(path: string): EventSource {
     const token = this.getToken();
     const url = `${BASE_URL}${path}${token ? `?token=${token}` : ''}`;

@@ -36,6 +36,28 @@ export interface Project {
   title: string;
   description: string | null;
   status: 'ACTIVE' | 'ARCHIVED' | 'DELETED';
+  visibility?: 'PRIVATE' | 'LINK_SHARED' | 'PUBLIC';
+  shareToken?: string | null;
+  role?: 'OWNER' | 'EDITOR' | 'VIEWER';
+  ownerDisplayName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ShareResponse {
+  projectId: string;
+  visibility: string;
+  shareToken: string | null;
+  shareUrl: string | null;
+  shareTokenCreatedAt: string | null;
+}
+
+export interface SharedProjectResponse {
+  projectId: string;
+  title: string;
+  description: string | null;
+  ownerDisplayName: string;
+  ownerAvatarUrl: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -101,10 +123,21 @@ export interface SSETaskUpdate {
 // Itinerary Types (matches Java StructuredItinerary)
 // ==============================
 
+export interface TravelTip {
+  category: 'booking' | 'closure' | 'dress_code' | 'safety' | 'logistics' | 'budget' | 'cultural' | string;
+  message: string;
+  priority?: 'high' | 'medium' | 'low';
+  appliesTo?: string;
+  advanceDays?: number;
+}
+
 export interface StructuredItinerary {
   metadata: ItineraryMetadata;
   days: DailyItinerary[];
   tips?: string[];
+  travelTips?: TravelTip[];
+  // AI-generated flexible fields (packing_suggestions, emergency_info, etc.)
+  [key: string]: unknown;
 }
 
 export interface ItineraryMetadata {
@@ -114,6 +147,8 @@ export interface ItineraryMetadata {
   totalDays: number;
   budget: string;
   interests: string[];
+  // AI-generated extras (best_season, currency, language, etc.)
+  [key: string]: unknown;
 }
 
 export interface DailyItinerary {
@@ -122,6 +157,23 @@ export interface DailyItinerary {
   theme: string;
   activities: Activity[];
   summary?: string;
+  // AI-generated extras (weather_forecast, total_walking_km, etc.)
+  [key: string]: unknown;
+}
+
+export interface DistanceInfo {
+  km: number;
+  transportMode?: string;
+  transportDetail?: string;
+  durationMinutes?: number;
+  transitCost?: string;
+}
+
+export interface SourceLink {
+  title: string;
+  url: string;
+  source: string; // 'official' | 'xiaohongshu' | 'foursquare' | 'google_maps' | 'web_search'
+  snippet?: string;
 }
 
 export interface Activity {
@@ -135,6 +187,17 @@ export interface Activity {
   tips?: string;
   notes?: string[];
   durationMinutes?: number;
+  distanceFromPrevious?: DistanceInfo;
+  highlights?: string[];
+  rating?: number;
+  bookingRequired?: boolean;
+  bookingUrl?: string;
+  reservationTip?: string;
+  cuisineType?: string;
+  websiteUrl?: string;
+  sourceLinks?: SourceLink[];
+  // AI-generated extras — any field the AI thinks is useful
+  [key: string]: unknown;
 }
 
 export interface Location {
@@ -143,6 +206,7 @@ export interface Location {
   longitude: number;
   address?: string;
   placeType?: string;
+  [key: string]: unknown;
 }
 
 // ==============================
@@ -157,7 +221,10 @@ export type AgentEventType =
   | 'plan_outline'
   | 'cost_summary'
   | 'clarification_needed'
-  | 'clarification_answer';
+  | 'clarification_answer'
+  | 'auth_required'
+  | 'auth_success'
+  | 'auth_expired';
 
 export interface AgentEvent {
   type: AgentEventType;
@@ -214,4 +281,64 @@ export interface ConversationHistoryResponse {
   projectId: string;
   messages: ConversationMessage[];
   totalCount: number;
+}
+
+// ==============================
+// Community Types (Module 19)
+// ==============================
+
+export interface CommunityPost {
+  id: number;
+  userId: number;
+  planId: string | null;
+  projectId: string | null;
+  title: string;
+  description: string | null;
+  coverImageUrl: string | null;
+  likesCount: number;
+  commentsCount: number;
+  viewsCount: number;
+  authorDisplayName: string;
+  authorAvatarUrl: string | null;
+  likedByMe: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Comment {
+  id: number;
+  postId: number;
+  userId: number;
+  parentCommentId: number | null;
+  content: string;
+  authorDisplayName: string;
+  authorAvatarUrl: string | null;
+  replies?: Comment[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ==============================
+// Collaboration Types (Module 20)
+// ==============================
+
+export type CollaboratorRole = 'OWNER' | 'EDITOR' | 'VIEWER';
+
+export interface Collaborator {
+  id: number;
+  projectId: string;
+  userId: number;
+  role: CollaboratorRole;
+  email: string;
+  displayName: string;
+  avatarUrl: string | null;
+  acceptedAt: string | null;
+  createdAt: string;
+}
+
+export interface PresenceUser {
+  userId: number;
+  displayName: string;
+  avatarUrl: string | null;
+  lastSeen: string;
 }

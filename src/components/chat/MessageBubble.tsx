@@ -4,10 +4,11 @@ import { ClarificationQuestions } from './ClarificationQuestions';
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  itineraryVersion?: number;
   onViewItinerary?: () => void;
 }
 
-export function MessageBubble({ message, onViewItinerary }: MessageBubbleProps) {
+export function MessageBubble({ message, itineraryVersion, onViewItinerary }: MessageBubbleProps) {
   const isUser = message.role === 'user';
   const isProcessing = message.status === 'PROCESSING' || message.status === 'PENDING';
   const hasAgentEvents = !isUser && message.agentEvents && message.agentEvents.length > 0;
@@ -63,7 +64,7 @@ export function MessageBubble({ message, onViewItinerary }: MessageBubbleProps) 
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
               </svg>
-              View Itinerary
+              View Itinerary{itineraryVersion ? ` (v${itineraryVersion})` : ''}
             </button>
           )}
 
