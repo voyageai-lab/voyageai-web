@@ -156,6 +156,7 @@ export interface DailyItinerary {
   date: string;
   theme: string;
   activities: Activity[];
+  alternatives?: Activity[][];
   summary?: string;
   // AI-generated extras (weather_forecast, total_walking_km, etc.)
   [key: string]: unknown;

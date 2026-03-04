@@ -93,6 +93,13 @@ export function DayCard({
   onEditRequest?: (prompt: string) => void;
 }) {
   const color = DAY_COLORS[(day.dayNumber - 1) % DAY_COLORS.length];
+  const [activeAlt, setActiveAlt] = useState<number | null>(null);
+
+  const hasAlternatives = day.alternatives && day.alternatives.length > 0;
+  const displayActivities =
+    activeAlt !== null && day.alternatives?.[activeAlt]
+      ? day.alternatives[activeAlt]
+      : day.activities;
 
   const weatherForecast = day.weatherForecast as string | undefined;
   const totalWalkingKm = day.totalWalkingKm as number | undefined;
@@ -157,19 +164,49 @@ export function DayCard({
       </button>
       {expanded && (
         <div className="divide-y divide-gray-100">
+          {hasAlternatives && (
+            <div className="px-4 py-2 bg-gray-50/60 flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] text-gray-500 font-medium mr-1">Schedule:</span>
+              <button
+                onClick={() => setActiveAlt(null)}
+                className={`text-[10px] px-2 py-1 rounded-md border transition ${
+                  activeAlt === null
+                    ? 'bg-blue-600 text-white border-blue-600'
+                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                Recommended
+              </button>
+              {day.alternatives!.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActiveAlt(activeAlt === i ? null : i)}
+                  className={`text-[10px] px-2 py-1 rounded-md border transition ${
+                    activeAlt === i
+                      ? 'bg-sky-600 text-white border-sky-600'
+                      : 'bg-white text-sky-600 border-sky-200 hover:bg-sky-50'
+                  }`}
+                >
+                  Alternative {i + 1}
+                </button>
+              ))}
+            </div>
+          )}
           {day.summary && (
             <p className="px-4 py-2 text-xs text-gray-500 bg-gray-50/50 italic">
               {day.summary}
             </p>
           )}
-          {day.activities.map((activity, idx) => (
-            <ActivityRow
-              key={activity.activityId || idx}
-              activity={activity}
-              dayNumber={day.dayNumber}
-              onEditRequest={onEditRequest}
-            />
-          ))}
+          <div className={activeAlt !== null ? 'bg-sky-50/40' : ''}>
+            {displayActivities.map((activity, idx) => (
+              <ActivityRow
+                key={activity.activityId || idx}
+                activity={activity}
+                dayNumber={day.dayNumber}
+                onEditRequest={onEditRequest}
+              />
+            ))}
+          </div>
           {onEditRequest && (
             <div className="px-4 py-2 bg-gray-50/80 flex flex-wrap gap-1.5">
               <button
