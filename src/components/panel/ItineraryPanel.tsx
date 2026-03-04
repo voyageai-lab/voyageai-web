@@ -12,9 +12,10 @@ interface ItineraryPanelProps {
   version: number;
   timestamp: string;
   onClose: () => void;
+  onEditRequest?: (prompt: string) => void;
 }
 
-export function ItineraryPanel({ itinerary, version, timestamp, onClose }: ItineraryPanelProps) {
+export function ItineraryPanel({ itinerary, version, timestamp, onClose, onEditRequest }: ItineraryPanelProps) {
   const { toolTrace } = useAppSelector((s) => s.chat);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [showTools, setShowTools] = useState(false);
@@ -47,6 +48,7 @@ export function ItineraryPanel({ itinerary, version, timestamp, onClose }: Itine
               itinerary={itinerary}
               selectedDay={selectedDay}
               onSelectDay={setSelectedDay}
+              onEditRequest={onEditRequest}
             />
           </>
         )}

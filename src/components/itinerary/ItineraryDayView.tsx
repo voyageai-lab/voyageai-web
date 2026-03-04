@@ -6,12 +6,14 @@ interface ItineraryContentProps {
   itinerary: StructuredItinerary;
   selectedDay: number | null;
   onSelectDay: (day: number | null) => void;
+  onEditRequest?: (prompt: string) => void;
 }
 
 export function ItineraryContent({
   itinerary,
   selectedDay,
   onSelectDay,
+  onEditRequest,
 }: ItineraryContentProps) {
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
 
@@ -48,6 +50,7 @@ export function ItineraryContent({
             }
           }}
           onDayClick={() => onSelectDay(day.dayNumber)}
+          onEditRequest={onEditRequest}
         />
       ))}
 
@@ -81,11 +84,13 @@ export function DayCard({
   expanded,
   onToggle,
   onDayClick,
+  onEditRequest,
 }: {
   day: DailyItinerary;
   expanded: boolean;
   onToggle: () => void;
   onDayClick: () => void;
+  onEditRequest?: (prompt: string) => void;
 }) {
   const color = DAY_COLORS[(day.dayNumber - 1) % DAY_COLORS.length];
 
@@ -158,15 +163,50 @@ export function DayCard({
             </p>
           )}
           {day.activities.map((activity, idx) => (
-            <ActivityRow key={activity.activityId || idx} activity={activity} />
+            <ActivityRow
+              key={activity.activityId || idx}
+              activity={activity}
+              dayNumber={day.dayNumber}
+              onEditRequest={onEditRequest}
+            />
           ))}
+          {onEditRequest && (
+            <div className="px-4 py-2 bg-gray-50/80 flex flex-wrap gap-1.5">
+              <button
+                onClick={() => onEditRequest(`Day ${day.dayNumber}: add a new activity — `)}
+                className="text-[10px] px-2 py-1 rounded-md bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 transition"
+              >
+                + Add Activity
+              </button>
+              <button
+                onClick={() => onEditRequest(`Day ${day.dayNumber}: rearrange the schedule to be more efficient`)}
+                className="text-[10px] px-2 py-1 rounded-md bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200 transition"
+              >
+                Optimize Schedule
+              </button>
+              <button
+                onClick={() => onEditRequest(`Day ${day.dayNumber}: suggest alternative activities`)}
+                className="text-[10px] px-2 py-1 rounded-md bg-purple-50 text-purple-600 border border-purple-200 hover:bg-purple-100 transition"
+              >
+                Alternatives
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-export function ActivityRow({ activity }: { activity: Activity }) {
+export function ActivityRow({
+  activity,
+  dayNumber,
+  onEditRequest,
+}: {
+  activity: Activity;
+  dayNumber?: number;
+  onEditRequest?: (prompt: string) => void;
+}) {
   const categoryIcons: Record<string, string> = {
     SIGHTSEEING: '🏛️',
     DINING: '🍽️',
@@ -316,6 +356,23 @@ export function ActivityRow({ activity }: { activity: Activity }) {
             )}
 
             <DynamicExtras activity={activity} />
+
+            {onEditRequest && dayNumber && (
+              <div className="flex gap-1 mt-1.5">
+                <button
+                  onClick={() => onEditRequest(`Day ${dayNumber}: replace "${activity.title}" with something similar but different`)}
+                  className="text-[9px] px-1.5 py-0.5 rounded bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100 transition"
+                >
+                  Replace
+                </button>
+                <button
+                  onClick={() => onEditRequest(`Day ${dayNumber}: remove "${activity.title}" and adjust the schedule`)}
+                  className="text-[9px] px-1.5 py-0.5 rounded bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -10,7 +10,10 @@ import {
   loadConversationHistory,
   setCurrentProjectId,
   resetChat,
+  addUserMessage,
+  submitPlanning,
 } from '@/store/chatSlice';
+import { fetchProjects } from '@/store/projectsSlice';
 import type { StructuredItinerary } from '@/types';
 
 interface SelectedItinerary {
@@ -100,6 +103,13 @@ export function AppLayout() {
           version={selected.version}
           timestamp={selected.timestamp}
           onClose={() => setSelected(null)}
+          onEditRequest={(prompt) => {
+            dispatch(addUserMessage(prompt));
+            dispatch(submitPlanning({
+              requirements: prompt,
+              ...(currentProjectId ? { projectId: currentProjectId } : {}),
+            })).then(() => dispatch(fetchProjects()));
+          }}
         />
       )}
     </div>
