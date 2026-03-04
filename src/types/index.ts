@@ -343,3 +343,23 @@ export interface PresenceUser {
   avatarUrl: string | null;
   lastSeen: string;
 }
+
+// ==============================
+// Gmail Trip Detection Types
+// ==============================
+
+export interface DetectedBooking {
+  emailId: string;
+  subject: string;
+  emailDate: string;
+  type: 'hotel' | 'flight' | 'ticket' | 'other';
+  dates: string[];
+  confirmationNumber?: string;
+  locationHints: string[];
+}
+
+export interface GmailScanResponse {
+  bookings: DetectedBooking[];
+  emailsScanned: number;
+  message: string;
+}

@@ -6,10 +6,11 @@ import { fetchProjects } from '@/store/projectsSlice';
 import { useSSE } from '@/hooks/useSSE';
 import { ChatInput } from './ChatInput';
 import { MessageBubble } from './MessageBubble';
+import { TripDetectionCard } from './TripDetectionCard';
 import { ShareDialog } from '@/components/share/ShareDialog';
 import { CollaboratorPanel } from '@/components/collaboration/CollaboratorPanel';
 import { PresenceAvatars } from '@/components/collaboration/PresenceAvatars';
-import type { StructuredItinerary } from '@/types';
+import type { DetectedBooking, StructuredItinerary } from '@/types';
 
 interface ChatAreaProps {
   onViewItinerary: (itinerary: StructuredItinerary, version: number, timestamp: string) => void;
@@ -21,6 +22,7 @@ export function ChatArea({ onViewItinerary }: ChatAreaProps) {
   const { projectId: urlProjectId } = useParams<{ projectId?: string }>();
   const { messages, currentTaskId, currentProjectId, loading } = useAppSelector((s) => s.chat);
   const { projects } = useAppSelector((s) => s.projects);
+  const { user } = useAppSelector((s) => s.auth);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [showShareDialog, setShowShareDialog] = useState(false);
   const [showCollabPanel, setShowCollabPanel] = useState(false);
@@ -70,6 +72,13 @@ export function ChatArea({ onViewItinerary }: ChatAreaProps) {
         }
       }
     });
+  };
+
+  const handleAddBookingToTrip = (booking: DetectedBooking) => {
+    const locationStr = booking.locationHints.length > 0 ? ` in ${booking.locationHints[0]}` : '';
+    const dateStr = booking.dates.length > 0 ? ` on ${booking.dates[0]}` : '';
+    const prompt = `I have a ${booking.type} booking${locationStr}${dateStr}: "${booking.subject}". Please incorporate this into my itinerary.`;
+    handleSend(prompt);
   };
 
   return (
@@ -124,6 +133,14 @@ export function ChatArea({ onViewItinerary }: ChatAreaProps) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Gmail Trip Detection (Google users only) */}
+      {user && messages.length === 0 && (
+        <TripDetectionCard
+          authProvider={user.authProvider}
+          onAddToTrip={handleAddBookingToTrip}
+        />
       )}
 
       {/* Messages area */}
