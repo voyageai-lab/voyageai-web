@@ -225,7 +225,7 @@ export function MapSection({
             />
           ))}
 
-          {visibleMarkers.map((marker, idx) => (
+          {visibleMarkers.map((marker) => (
             <Marker
               key={`${marker.day}-${marker.activityIdx}`}
               position={[marker.lat, marker.lng]}
